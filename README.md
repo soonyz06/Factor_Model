@@ -9,7 +9,7 @@ not refined
 # Factor Models (R = BF + e)
   Time-series Regression
   - regression of asset returns on factor returns 
-  - used in estimating realized exposures and performance attribution
+  - used in estimating realized exposures and performance attribution (ex post)
     
   Cross-sectional Regression
   - regression of asset returns on exposures
@@ -18,11 +18,11 @@ not refined
 
  Risk
   - Factor Risk Contribution = Signal exposure x std(F)
-  - Factor covariance matrix for risk decomposition (Ex-Ante)
+  - Factor covariance matrix for risk decomposition (ex ante)
   - MVO using factor returns instead of asset returns (nxn to kxk)
 
 # Factor Returns
 ![fig0](Figure_0.png)
 ![fig1](Figure_1.png)
 ![fig2](Figure_2.png)
-- Differ quite a bit due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), scuffed so prob some bug with neutralise logic or something somwhere, etc
+- Differ quite a bit due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), scuffed so prob some bug with neutralise logic or something somwhere in the pipeline, etc
