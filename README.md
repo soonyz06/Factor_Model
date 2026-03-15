@@ -28,6 +28,6 @@ BMBL
 
 SRPT  
 ![srpt](img/SRPT.png)
-- SRPT's returns over the past year are mostly from idiosyncratic alpha, this may be due to the deaths of their patients leading to the distribution Elevidys being temporarily halted  
+- SRPT's returns over the past year are mostly from idiosyncratic alpha, this may be due to the deaths of their patients leading to the distribution of Elevidys being temporarily halted and growing fears of the drug being pulled 
 
 
