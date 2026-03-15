@@ -20,3 +20,8 @@ not refined
   - Factor Risk Contribution = Signal exposure x std(F)
   - Factor covariance matrix for risk decomposition (Ex-Ante)
   - MVO using factor returns instead of asset returns (nxn to kxk)
+
+# Factor Returns
+![mine](Figure_1.png)
+![barra](Figure_2.png)
+- Differ quite a bit due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), etc
