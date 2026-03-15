@@ -27,6 +27,6 @@ BMBL
 
 SRPT  
 ![srpt](img/SRPT.png)
-- SRPT and BMBL both have exposures to VAL and MKT 
+- SRPT's returns over the past year are mostly from idiosyncratic alpha, thus may be due to the deaths of their patients leading to elevidys being pulled temporarily 
 
 
