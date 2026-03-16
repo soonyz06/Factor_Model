@@ -14,12 +14,12 @@ not refined
 # Factor Returns
 ![me](img/Figure_1.png) 
 ![value](img/Figure_2.png)
-- Differ quite a bit from actual values due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), i prob overlooked something in the logic, etc
+- Differ quite a bit from actual values (Orange~VAL) due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), i prob overlooked something in the logic, etc
 
 # Performance Attribution
 IONQ  
 ![ionq](img/IONQ.png)
-  - IONQ's returns over the past year can be largely explained by its exposure to MOM and MKT factors
+  - IONQ's returns over the past year can be largely explained by its exposure to MOM and MKT factors (high f-stat and R^2)
 
 BMBL  
 ![bmbl](img/BMBL.png)
