@@ -50,7 +50,7 @@ class Loader: #abit scuffed :)
             except Exception as e:
                 print(f"[WARNING]Skipped symbols {i} to {i+batch_size} due to {e}")
             
-    def load_data(self, symbols, dirname, fetch_func, other_args=None, schema=None): ##add refresh/updating
+    def load_data(self, symbols, dirname, fetch_func, other_args=None, schema=None, FETCH=True): ##add refresh/updating
         if other_args is None: other_args = {}
         dirpath = self.basepath / dirname
         dirpath.mkdir(exist_ok=True, parents=True)
@@ -65,7 +65,7 @@ class Loader: #abit scuffed :)
                 .select("symbol").unique().collect().get_column("symbol")
             )
 
-        missing_symbols = [s for s in symbols if s not in existing_symbols]
+        missing_symbols = [s for s in symbols if s not in existing_symbols] if FETCH else []
         if missing_symbols:
             buffer = []
             buffer_size = 0

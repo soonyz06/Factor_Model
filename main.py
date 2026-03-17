@@ -47,29 +47,33 @@ plotter = Plots()
 #loader.compact_data("Profile", pf_schema)
 #loader.compact_data("History", his_schema)
 
-
 #-----//Factor Returns//-----
 basepath = Path.cwd() / "data" / "Factor_Returns"
 basepath.mkdir(exist_ok=True, parents=True)
 
-def load_asset_ret(symbols):
+def load_profile(symbols, FETCH=True):
     if not isinstance(symbols, list): symbols = [symbols]
-    lf = loader.load_data(symbols, "History", fetch_func=loader.fetch_history, other_args={"period": "max"}, schema=his_schema)
+    lf = loader.load_data(symbols, "Profile", fetch_func=loader.fetch_profile, schema=pf_schema, FETCH=FETCH)
+    pf = lf.sort("ts", descending=False).unique(subset=["symbol"], keep="last").drop("ts")
+    pf = pf.with_columns([pl.col(cat).fill_null("Unknown").alias(cat)for cat in categories])
+    return pf
+    
+def load_asset_ret(symbols, FETCH=True):
+    if not isinstance(symbols, list): symbols = [symbols]
+    lf = loader.load_data(symbols, "History", fetch_func=loader.fetch_history, other_args={"period": "max"}, schema=his_schema, FETCH=FETCH)
     his = lf.sort("ts", descending=False).unique(subset=["symbol", "date"], keep="last")
     his = his.drop(['ts', 'open', 'high', 'low', 'volume', 'close', 'splits'])
     his = his.filter(pl.col("symbol").is_in(symbols))
     asset_ret = processor.log_transform(his.collect())
     return asset_ret #returns pl.LazyFrame
 
-def construct_factor_returns(filename, symbols, start_date, end_date, benchmark_symbol="MSCI"):
+def construct_exposures(symbols, start_date, end_date, benchmark_symbol="MSCI", FETCH=True):
     symbols += [benchmark_symbol]
     
     #Loading Data
-    lf = loader.load_data(symbols, "Profile", fetch_func=loader.fetch_profile, schema=pf_schema)
-    pf = lf.sort("ts", descending=False).unique(subset=["symbol"], keep="last").drop("ts")
-    pf = pf.with_columns([pl.col(cat).fill_null("Unknown").alias(cat)for cat in categories])
-
-    lf = load_asset_ret(symbols)
+    pf = load_profile(symbols, FETCH)
+    lf = load_asset_ret(symbols, FETCH)
+    
     benchmark = (lf.filter(pl.col("symbol") == benchmark_symbol).select([pl.col("date"), pl.col("log_ret").alias("mkt_ret")]))
     lf = lf.filter(pl.col("symbol")!=benchmark_symbol)
     asset_ret = lf.collect()
@@ -92,18 +96,38 @@ def construct_factor_returns(filename, symbols, start_date, end_date, benchmark_
     lf = processor.process_composites(lf, composite_factors, risk_factors).sort(["symbol", "date"])
 
     lf = lf.select(["symbol", "date"]+composite_factors)
-    lf_lagged = lf.with_columns(pl.all().exclude(["symbol", "date"]).shift(1).over("symbol"))
-    lf = lf_lagged.join(asset_ret.lazy(), on=["symbol", "date"], how="left")
+    lf_lagged = lf.with_columns(pl.all().exclude(["symbol", "date"]).shift(1).over("symbol")) #t-1
+    exposures = lf_lagged.join(asset_ret.lazy(), on=["symbol", "date"], how="left")
+    return exposures
 
-    #Cross Sectional Regressions at each time step
-    factor_ret = processor.get_factor_returns(lf, composite_factors, ["log_ret"])
-    plotter.plot_factor_performance(factor_ret, composite_factors)
-    factor_ret.write_parquet(basepath / f"{filename}.parquet")
+def standard_t_stat(df, cols):
+    #t = (x_bar - mu) / (std/sqrt(n)) = (y_bar * sqrt(n)) / std (mu=0) 
+    t_stat = df.select([
+        ((pl.col(c).mean() * pl.len().sqrt()) / pl.col(c).std()).alias(f"t-{c}")
+        for c in cols
+    ])
+    return t_stat
+
+def Newey_West_t_stat(df, cols):
+    newey_west = {"cov_type": "HAC", "cov_kwds": {'maxlags': None}} #{} would be equivalent to standard t-stat
+    
+    X = np.ones(len(df))
+    t_stats = {}
+    for c in cols:
+        model = sm.OLS(df[c].to_numpy(), X) #equivalent to fitting mean (β = Y_bar)
+        results = model.fit(**newey_west) #can be used for CI and Durbin-Watson Stat
+        t_stats[c] = results.tvalues[0] 
+    return pl.DataFrame(t_stats)
 
 rng = np.random.default_rng(seed=42)
 symbols = list(rng.choice(sp500_tickers, size=100, replace=False))
-construct_factor_returns("Test2", symbols, start_date=date(2020, 1, 1), end_date=date(2025, 1, 1), benchmark_symbol="SPY")
-
+exposures = construct_exposures(symbols, start_date=date(2025, 3, 15), end_date=date(2026, 3, 15), benchmark_symbol="SPY", FETCH=False)
+factor_ret = processor.get_factor_returns(exposures, composite_factors, ["log_ret"]) ##Cross Sectional Regressions at each time step
+#factor_ret.write_parquet(basepath / "Test3.parquet")
+#plotter.plot_factor_performance(factor_ret, composite_factors)
+#print(standard_t_stat(factor_ret, composite_factors))
+print("\nNewey-West t-stat")
+print(Newey_West_t_stat(factor_ret, composite_factors)) #?abs(t)>2
 
 # -----//Performance Attribution//----- 
 def decompose_returns(return_df, factor_ret, start_date, end_date): #could be used to decompose the returns of any asset, portfolio or manager's performance
@@ -134,15 +158,19 @@ def decompose_returns(return_df, factor_ret, start_date, end_date): #could be us
     print(attr_df)
     return attr_df
 
-target_daily_vol = 0.20 / np.sqrt(252)
-factor_ret = pl.read_parquet(basepath / "ret1.parquet")
-if target_daily_vol is not None: #scale factor returns (vol-targetting) -> Beta makes economical sense
-    factor_ret = factor_ret.with_columns([
+def vol_targetting(df, cols, target_annual_vol_pct=None):
+    #scale factor returns -> Beta makes more economical sense
+    if target_annual_vol_pct is None: return df
+    target_daily_vol = target_annual_vol_pct / np.sqrt(252)
+    df = df.with_columns([
         (pl.col(col) * (target_daily_vol / pl.col(col).std())).alias(col)
-        for col in composite_factors
-    ]) 
+        for col in cols
+    ])
+    return df
 
 symbol = "BMBL"
+factor_ret = pl.read_parquet(basepath / "ret1.parquet")
+factor_ret = vol_targetting(factor_ret, composite_factors, target_annual_vol_pct=0.2)
 return_df = load_asset_ret(symbol).collect()
 result_df = decompose_returns(return_df, factor_ret, date(2025, 1, 1), date(2026, 1, 1))
 
@@ -156,11 +184,9 @@ omega = np.cov(df.select(composite_factors).to_numpy().T)
 #systematic_variance = factor_exposures.T @ omega @ factor_exposures
 print(omega)
 
-#unit test, smooth forward fill
+#unit test, smooth/forward fill
 """
 
-#Risk decomposition, portfolio construction, scenario anaysis, hedging, etc
-#Beta from OLS is ex post and Signal from factor construction is ex ante
 
 
 
