@@ -13,7 +13,7 @@ not refined
 # Factor Returns
 ![me](img/Figure_1.png) 
 ![value](img/Figure_2.png)
-- Differ quite a bit from actual values (Orange~VAL) due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), i prob overlooked something in the logic, etc
+- Differ quite a bit from actual values (Orange~VAL) due to only small sample size, different 'definition' of factors, i haven't scaled by MC (WLS), i prob overlooked something in the logic, etc (work in progress)
 
 # Performance Attribution
 Portfolio 1
