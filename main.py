@@ -35,8 +35,8 @@ factor_defs = {
     "MOM": [["UMD_12_1", "UMD_6_1"], 21, 1], 
     "VAL": [["HML_5", "HML_3"], 21*12, -1],
     "STR": [["STR_21", "STR_10"], 1, -1],
-    "MKT": [["MKT_3_5"], 1, 1],
-    "BAB": [["BAB_3_5"], 1, -1]
+    "MKT": [["MKT_1_5"], 1, 1],
+    "BAB": [["BAB_1_5"], 1, -1]
 }
 categories = [c for c in pf_schema.keys() if c not in ["symbol", "ts"]]
 composite_factors = list(factor_defs.keys())
